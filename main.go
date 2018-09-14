@@ -108,7 +108,15 @@ func uploadHandler(c *gin.Context) {
 	for _, file := range files {
 		uuId := uuid.Must(uuid.NewV4())
 		c.SaveUploadedFile(file, "uploads/"+uuId.String())
-		json.Images = append(json.Images, "http://localhost:8080/private/uploads/"+uuId.String())
+		json.Images = append(json.Images, "http://localhost:8080/private/uploads/"+
+			uuId.String())
+
+		for i := range infos {
+			if infos[i].Id == id {
+				infos[i].Images = append(infos[i].Images,
+					"http://localhost:8080/private/uploads/"+uuId.String())
+			}
+		}
 	}
 
 	c.JSON(http.StatusCreated, json)
