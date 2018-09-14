@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	jwtgo "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/contrib/jwt"
 	"github.com/gin-gonic/gin"
+	"github.com/satori/go.uuid"
 	"net/http"
 	"strconv"
 )
@@ -16,14 +17,10 @@ var (
 )
 
 type Info struct {
-	Id       int    `json:"id" binding:"required"`
-	Username string `json:"username" binding:"required"`
-	Event    string `json:"event" binding:"required"`
-	Image1   string `json:"image1"`
-	Image2   string `json:"image2"`
-	Image3   string `json:"image3"`
-	Image4   string `json:"image4"`
-	Image5   string `json:"image5"`
+	Id       int      `json:"id" binding:"required"`
+	Username string   `json:"username" binding:"required"`
+	Event    string   `json:"event" binding:"required"`
+	Images   []string `json:"images"`
 }
 
 func main() {
@@ -80,11 +77,13 @@ func createHandler(c *gin.Context) {
 
 	infos = append(infos, json)
 
-	c.JSON(http.StatusOK, json)
+	c.JSON(http.StatusCreated, json)
 }
 
 func uploadHandler(c *gin.Context) {
 	var info Info
+	var json Info
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -99,5 +98,18 @@ func uploadHandler(c *gin.Context) {
 		}
 	}
 
-	fmt.Println(info)
+	json.Id = info.Id
+	json.Username = info.Username
+	json.Event = info.Event
+
+	form, _ := c.MultipartForm()
+	files := form.File["upload[]"]
+
+	for _, file := range files {
+		uuId := uuid.Must(uuid.NewV4())
+		c.SaveUploadedFile(file, "uploads/"+uuId.String())
+		json.Images = append(json.Images, "http://localhost:8080/private/uploads/"+uuId.String())
+	}
+
+	c.JSON(http.StatusCreated, json)
 }
