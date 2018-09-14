@@ -1,7 +1,6 @@
 package main
 
 import (
-	// "fmt"
 	jwtgo "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/contrib/jwt"
 	"github.com/gin-gonic/gin"
@@ -34,6 +33,7 @@ func main() {
 	private.GET("/", privateHandler)
 	private.POST("/create", createHandler)
 	private.POST("/upload/:id", uploadHandler)
+	private.Static("/uploads", "./uploads")
 
 	r.Run()
 }
