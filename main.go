@@ -1,15 +1,18 @@
 package main
 
 import (
+	"fmt"
 	jwtgo "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/contrib/jwt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 var (
 	mysecret = "secret"
 	counter  = 0
+	infos    []Info
 )
 
 type Info struct {
@@ -33,7 +36,7 @@ func main() {
 	private.Use(jwt.Auth(mysecret))
 	private.GET("/", privateHandler)
 	private.POST("/create", createHandler)
-	// private.POST("/upload", uploadHandler)
+	private.POST("/upload/:id", uploadHandler)
 
 	r.Run()
 }
@@ -65,7 +68,8 @@ func privateHandler(c *gin.Context) {
 
 func createHandler(c *gin.Context) {
 	var json Info
-	json.Id = counter + 1
+	counter++
+	json.Id = counter
 
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -74,5 +78,26 @@ func createHandler(c *gin.Context) {
 		return
 	}
 
+	infos = append(infos, json)
+
 	c.JSON(http.StatusOK, json)
+}
+
+func uploadHandler(c *gin.Context) {
+	var info Info
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	for i := range infos {
+		if infos[i].Id == id {
+			info = infos[i]
+		}
+	}
+
+	fmt.Println(info)
 }
