@@ -1,11 +1,16 @@
 package main
 
 import (
+	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	jwtgo "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/contrib/jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -13,6 +18,10 @@ var (
 	mysecret = "secret"
 	counter  = 0
 	infos    []Info
+	conf     = aws.Config{Region: aws.String("eu-central-1")}
+	sess     = session.New(&conf)
+	svc      = s3manager.NewUploader(sess)
+	bucket   = "lean-tobacco-bucket"
 )
 
 type Info struct {
@@ -33,7 +42,7 @@ func main() {
 	private.GET("/", privateHandler)
 	private.POST("/create", createHandler)
 	private.POST("/upload/:id", uploadHandler)
-	private.Static("/uploads", "./uploads")
+	// private.Static("/uploads", "./uploads")
 
 	r.Run()
 }
@@ -107,14 +116,31 @@ func uploadHandler(c *gin.Context) {
 
 	for _, file := range files {
 		uuId := uuid.Must(uuid.NewV4())
+
 		c.SaveUploadedFile(file, "uploads/"+uuId.String())
-		json.Images = append(json.Images, "http://localhost:8080/private/uploads/"+
-			uuId.String())
+
+		file, err := os.Open("./uploads/" + uuId.String())
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		defer file.Close()
+
+		result, err := svc.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(uuId.String()),
+			Body:   file,
+		})
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		json.Images = append(json.Images, result.Location)
 
 		for i := range infos {
 			if infos[i].Id == id {
-				infos[i].Images = append(infos[i].Images,
-					"http://localhost:8080/private/uploads/"+uuId.String())
+				infos[i].Images = append(infos[i].Images, result.Location)
 			}
 		}
 	}
