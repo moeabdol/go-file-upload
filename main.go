@@ -34,20 +34,21 @@ type Info struct {
 func main() {
 	r := gin.Default()
 
-	public := r.Group("/public")
-	public.GET("/", publicHandler)
+	// Public routes
+	r.GET("/get-token", getTokenHandler)
 
-	private := r.Group("/private")
+	// Private routes
+	private := r.Group("/")
 	private.Use(jwt.Auth(mysecret))
-	private.GET("/", privateHandler)
-	private.POST("/create", createHandler)
+	private.GET("/verify-token", verifyTokenHandler)
+	private.POST("/create-resource", createResourceHandler)
 	private.POST("/upload/:id", uploadHandler)
-	// private.Static("/uploads", "./uploads")
+	private.GET("/get-resource/:id", getResourceHandler)
 
 	r.Run()
 }
 
-func publicHandler(c *gin.Context) {
+func getTokenHandler(c *gin.Context) {
 	token := jwtgo.New(jwtgo.GetSigningMethod("HS256"))
 	token.Claims = jwtgo.MapClaims{
 		"iss": "golang photo upload app",
@@ -66,13 +67,13 @@ func publicHandler(c *gin.Context) {
 	})
 }
 
-func privateHandler(c *gin.Context) {
+func verifyTokenHandler(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "Successfully authorized",
 	})
 }
 
-func createHandler(c *gin.Context) {
+func createResourceHandler(c *gin.Context) {
 	var json Info
 	counter++
 	json.Id = counter
@@ -146,4 +147,28 @@ func uploadHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, json)
+}
+
+func getResourceHandler(c *gin.Context) {
+	var info Info
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	for i := range infos {
+		if infos[i].Id == id {
+			info = infos[i]
+			c.JSON(http.StatusOK, info)
+			return
+		}
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{
+		"message": "Resource not found!",
+	})
 }
